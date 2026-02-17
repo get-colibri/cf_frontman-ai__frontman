@@ -2522,6 +2522,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@frontman-ai/standalone@workspace:libs/frontman-standalone":
+  version: 0.0.0-use.local
+  resolution: "@frontman-ai/standalone@workspace:libs/frontman-standalone"
+  dependencies:
+    "@frontman/bindings": "npm:0.1.0"
+    "@frontman/frontman-core": "npm:0.1.0"
+    "@frontman/frontman-protocol": "npm:0.1.0"
+    "@rescript/runtime": "npm:12.0.0-beta.14"
+    "@rescript/webapi": "catalog:"
+    rescript: "catalog:"
+    sury: "npm:11.0.0-alpha.4"
+  languageName: unknown
+  linkType: soft
+
 "@frontman-ai/vite@workspace:libs/frontman-vite":
   version: 0.0.0-use.local
   resolution: "@frontman-ai/vite@workspace:libs/frontman-vite"
@@ -2686,7 +2700,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@frontman/frontman-core@npm:*, @frontman/frontman-core@workspace:libs/frontman-core":
+"@frontman/frontman-core@npm:*, @frontman/frontman-core@npm:0.1.0, @frontman/frontman-core@workspace:libs/frontman-core":
   version: 0.0.0-use.local
   resolution: "@frontman/frontman-core@workspace:libs/frontman-core"
   dependencies:
