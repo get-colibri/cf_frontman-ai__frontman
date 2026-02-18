@@ -18,21 +18,28 @@ class Frontman_Tool_Templates {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_get_site_info',
-			description: "Returns comprehensive site information including WordPress version, active theme, active plugins, post types, and taxonomies.\n\nNo parameters required.",
+			description: 'Returns comprehensive site information including WordPress version, active theme, active plugins, registered post types, and taxonomies.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => new \stdClass(),
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => new \stdClass(),
 			],
 			handler: [ $this, 'get_site_info' ],
 		) );
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_templates',
-			description: "Lists available block templates and template parts in the active theme.\n\nParameters:\n- type (optional): \"wp_template\" or \"wp_template_part\" (default: \"wp_template\").",
+			description: 'Lists available block templates or template parts in the active theme.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'type' => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'type' => [
+						'type'        => 'string',
+						'description' => 'The template type to list.',
+						'enum'        => [ 'wp_template', 'wp_template_part' ],
+						'default'     => 'wp_template',
+					],
 				],
 			],
 			handler: [ $this, 'list_templates' ],

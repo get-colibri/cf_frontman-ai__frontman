@@ -56,11 +56,15 @@ class Frontman_Tool_Options {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_get_option',
-			description: "Reads a WordPress option value.\n\nParameters:\n- name (required): The option name (e.g. \"blogname\", \"permalink_structure\").\n\nOnly allows reading from a safe allowlist of options.",
+			description: 'Reads a WordPress option value by name. Only allows reading from a safe allowlist of options.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'name' => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'name' => [
+						'type'        => 'string',
+						'description' => 'The option name to read (e.g. "blogname", "permalink_structure", "posts_per_page").',
+					],
 				],
 				'required' => [ 'name' ],
 			],
@@ -69,12 +73,23 @@ class Frontman_Tool_Options {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_update_option',
-			description: "Updates a WordPress option value.\n\nParameters:\n- name (required): The option name.\n- value (required): The new value (string, number, or boolean).\n\nOnly allows modifying a safe allowlist of options.",
+			description: 'Updates a WordPress option value. Only allows modifying a safe allowlist of options.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'name'  => [ 'type' => 'string' ],
-					'value' => [],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'name'  => [
+						'type'        => 'string',
+						'description' => 'The option name to update.',
+					],
+					'value' => [
+						'description' => 'The new value for the option. Can be a string, number, or boolean.',
+						'oneOf'       => [
+							[ 'type' => 'string' ],
+							[ 'type' => 'number' ],
+							[ 'type' => 'boolean' ],
+						],
+					],
 				],
 				'required' => [ 'name', 'value' ],
 			],
@@ -83,10 +98,11 @@ class Frontman_Tool_Options {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_options',
-			description: "Lists available WordPress options that can be read or modified.\n\nNo parameters required.\n\nReturns the option names and their current values.",
+			description: 'Lists all WordPress options that can be read or modified via wp_get_option/wp_update_option, with their current values.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => new \stdClass(),
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => new \stdClass(),
 			],
 			handler: [ $this, 'list_options' ],
 		) );

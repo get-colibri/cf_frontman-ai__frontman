@@ -27,6 +27,11 @@ class Frontman_Auth {
 	 * @return true|\WP_Error True if authorized, WP_Error with status code on failure.
 	 */
 	public static function check(): true|\WP_Error {
+		// Ensure current user is loaded from cookies (needed when called early in parse_request).
+		if ( ! did_action( 'set_current_user' ) ) {
+			wp_get_current_user();
+		}
+
 		if ( ! is_user_logged_in() ) {
 			return new \WP_Error(
 				'frontman_not_authenticated',

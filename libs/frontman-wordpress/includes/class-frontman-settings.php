@@ -13,16 +13,32 @@ class Frontman_Settings {
 	private const OPTION_KEY = 'frontman_settings';
 
 	private const DEFAULTS = [
-		'standalone_host' => '127.0.0.1',
-		'standalone_port' => 4321,
+		'standalone_host'  => '127.0.0.1',
+		'standalone_port'  => 4321,
+		'dev_mode'         => false,
+		'dev_client_port'  => 5173,
+		'frontman_host'    => 'frontman.local:4000',
 	];
 
 	/**
-	 * Register settings hooks.
+	 * Register settings fields (admin_init only).
+	 *
+	 * The admin menu entry is registered separately via register_menu()
+	 * to ensure the parent "Frontman" menu page exists first.
 	 */
 	public function register(): void {
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
-		add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
+	}
+
+	/**
+	 * Register the submenu page under admin_menu.
+	 *
+	 * Must be called AFTER the parent "frontman" menu page is registered
+	 * by Frontman_UI::register(), otherwise WordPress can't resolve the
+	 * parent slug and the page returns "not allowed".
+	 */
+	public function register_menu(): void {
+		add_action( 'admin_menu', [ $this, 'add_settings_page' ], 20 );
 	}
 
 	/**
@@ -61,6 +77,44 @@ class Frontman_Settings {
 			'frontman-settings',
 			'frontman_standalone_section',
 			[ 'key' => 'standalone_port', 'placeholder' => '4321', 'type' => 'number' ],
+		);
+
+		// --- Development section ---
+		add_settings_section(
+			'frontman_dev_section',
+			__( 'Development', 'frontman' ),
+			fn() => printf(
+				'<p>%s</p>',
+				esc_html__( 'Enable dev mode to load the Frontman client from a local Vite dev server instead of the production CDN.', 'frontman' ),
+			),
+			'frontman-settings',
+		);
+
+		add_settings_field(
+			'dev_mode',
+			__( 'Dev Mode', 'frontman' ),
+			[ $this, 'render_checkbox_field' ],
+			'frontman-settings',
+			'frontman_dev_section',
+			[ 'key' => 'dev_mode', 'label' => __( 'Load client from local Vite dev server', 'frontman' ) ],
+		);
+
+		add_settings_field(
+			'dev_client_port',
+			__( 'Client Dev Port', 'frontman' ),
+			[ $this, 'render_text_field' ],
+			'frontman-settings',
+			'frontman_dev_section',
+			[ 'key' => 'dev_client_port', 'placeholder' => '5173', 'type' => 'number' ],
+		);
+
+		add_settings_field(
+			'frontman_host',
+			__( 'Frontman Server Host', 'frontman' ),
+			[ $this, 'render_text_field' ],
+			'frontman-settings',
+			'frontman_dev_section',
+			[ 'key' => 'frontman_host', 'placeholder' => 'frontman.local:4000' ],
 		);
 	}
 
@@ -116,12 +170,32 @@ class Frontman_Settings {
 	}
 
 	/**
+	 * Render a checkbox input field.
+	 */
+	public function render_checkbox_field( array $args ): void {
+		$key   = $args['key'];
+		$value = (bool) $this->get( $key );
+		$label = $args['label'] ?? '';
+		$name  = self::OPTION_KEY . "[{$key}]";
+
+		printf(
+			'<label><input type="checkbox" name="%s" value="1" %s /> %s</label>',
+			esc_attr( $name ),
+			checked( $value, true, false ),
+			esc_html( $label ),
+		);
+	}
+
+	/**
 	 * Sanitize settings on save.
 	 */
 	public function sanitize( array $input ): array {
 		return [
-			'standalone_host' => sanitize_text_field( $input['standalone_host'] ?? self::DEFAULTS['standalone_host'] ),
-			'standalone_port' => absint( $input['standalone_port'] ?? self::DEFAULTS['standalone_port'] ),
+			'standalone_host'  => sanitize_text_field( $input['standalone_host'] ?? self::DEFAULTS['standalone_host'] ),
+			'standalone_port'  => absint( $input['standalone_port'] ?? self::DEFAULTS['standalone_port'] ),
+			'dev_mode'         => ! empty( $input['dev_mode'] ),
+			'dev_client_port'  => absint( $input['dev_client_port'] ?? self::DEFAULTS['dev_client_port'] ),
+			'frontman_host'    => sanitize_text_field( $input['frontman_host'] ?? self::DEFAULTS['frontman_host'] ),
 		];
 	}
 

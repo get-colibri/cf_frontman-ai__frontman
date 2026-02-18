@@ -18,17 +18,48 @@ class Frontman_Tool_Posts {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_posts',
-			description: "Lists posts, pages, or custom post types.\n\nParameters:\n- post_type (optional): Post type slug (default: \"post\"). Use \"page\" for pages, or any CPT slug.\n- status (optional): Post status filter (default: \"publish\"). Options: publish, draft, pending, private, trash, any.\n- per_page (optional): Number of results (default: 20, max: 100).\n- page (optional): Page number for pagination (default: 1).\n- search (optional): Search query string.\n- orderby (optional): Sort field (default: \"date\"). Options: date, title, modified, ID.\n- order (optional): Sort direction (default: \"DESC\"). Options: ASC, DESC.",
+			description: 'Lists posts, pages, or custom post types with pagination and filtering.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'post_type' => [ 'type' => 'string' ],
-					'status'    => [ 'type' => 'string' ],
-					'per_page'  => [ 'type' => 'integer' ],
-					'page'      => [ 'type' => 'integer' ],
-					'search'    => [ 'type' => 'string' ],
-					'orderby'   => [ 'type' => 'string' ],
-					'order'     => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'post_type' => [
+						'type'        => 'string',
+						'description' => 'Post type slug. Use "page" for pages, or any registered CPT slug.',
+						'default'     => 'post',
+					],
+					'status'    => [
+						'type'        => 'string',
+						'description' => 'Filter by post status.',
+						'enum'        => [ 'publish', 'draft', 'pending', 'private', 'trash', 'any' ],
+						'default'     => 'publish',
+					],
+					'per_page'  => [
+						'type'        => 'integer',
+						'description' => 'Number of results per page (max 100).',
+						'default'     => 20,
+					],
+					'page'      => [
+						'type'        => 'integer',
+						'description' => 'Page number for pagination.',
+						'default'     => 1,
+					],
+					'search'    => [
+						'type'        => 'string',
+						'description' => 'Search query string to filter posts by keyword.',
+					],
+					'orderby'   => [
+						'type'        => 'string',
+						'description' => 'Field to sort results by.',
+						'enum'        => [ 'date', 'title', 'modified', 'ID' ],
+						'default'     => 'date',
+					],
+					'order'     => [
+						'type'        => 'string',
+						'description' => 'Sort direction.',
+						'enum'        => [ 'ASC', 'DESC' ],
+						'default'     => 'DESC',
+					],
 				],
 			],
 			handler: [ $this, 'list_posts' ],
@@ -36,11 +67,15 @@ class Frontman_Tool_Posts {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_read_post',
-			description: "Reads a single post/page by ID, including its content, metadata, and block markup.\n\nParameters:\n- id (required): The post ID.",
+			description: 'Reads a single post or page by ID, including its full content, metadata, and block markup.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'id' => [ 'type' => 'integer' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'id' => [
+						'type'        => 'integer',
+						'description' => 'The post ID to read.',
+					],
 				],
 				'required' => [ 'id' ],
 			],
@@ -49,14 +84,30 @@ class Frontman_Tool_Posts {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_create_post',
-			description: "Creates a new post or page.\n\nParameters:\n- title (required): Post title.\n- content (required): Post content (HTML or block markup).\n- post_type (optional): Post type (default: \"post\").\n- status (optional): Post status (default: \"draft\"). Options: draft, publish, pending, private.",
+			description: 'Creates a new post or page. Returns the new post ID and permalink.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'title'     => [ 'type' => 'string' ],
-					'content'   => [ 'type' => 'string' ],
-					'post_type' => [ 'type' => 'string' ],
-					'status'    => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'title'     => [
+						'type'        => 'string',
+						'description' => 'The post title.',
+					],
+					'content'   => [
+						'type'        => 'string',
+						'description' => 'The post content as HTML or Gutenberg block markup.',
+					],
+					'post_type' => [
+						'type'        => 'string',
+						'description' => 'Post type slug.',
+						'default'     => 'post',
+					],
+					'status'    => [
+						'type'        => 'string',
+						'description' => 'Initial post status.',
+						'enum'        => [ 'draft', 'publish', 'pending', 'private' ],
+						'default'     => 'draft',
+					],
 				],
 				'required' => [ 'title', 'content' ],
 			],
@@ -65,15 +116,32 @@ class Frontman_Tool_Posts {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_update_post',
-			description: "Updates an existing post or page.\n\nParameters:\n- id (required): The post ID to update.\n- title (optional): New title.\n- content (optional): New content (HTML or block markup).\n- status (optional): New status.\n- excerpt (optional): New excerpt.",
+			description: 'Updates an existing post or page. Only the fields you provide will be changed.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'id'      => [ 'type' => 'integer' ],
-					'title'   => [ 'type' => 'string' ],
-					'content' => [ 'type' => 'string' ],
-					'status'  => [ 'type' => 'string' ],
-					'excerpt' => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'id'      => [
+						'type'        => 'integer',
+						'description' => 'The post ID to update.',
+					],
+					'title'   => [
+						'type'        => 'string',
+						'description' => 'New post title.',
+					],
+					'content' => [
+						'type'        => 'string',
+						'description' => 'New post content as HTML or block markup.',
+					],
+					'status'  => [
+						'type'        => 'string',
+						'description' => 'New post status.',
+						'enum'        => [ 'draft', 'publish', 'pending', 'private', 'trash' ],
+					],
+					'excerpt' => [
+						'type'        => 'string',
+						'description' => 'New post excerpt.',
+					],
 				],
 				'required' => [ 'id' ],
 			],
@@ -82,12 +150,20 @@ class Frontman_Tool_Posts {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_delete_post',
-			description: "Deletes a post or page.\n\nParameters:\n- id (required): The post ID to delete.\n- force (optional): Skip trash and permanently delete (default: false).",
+			description: 'Deletes a post or page. By default moves to trash; set force=true to permanently delete.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'id'    => [ 'type' => 'integer' ],
-					'force' => [ 'type' => 'boolean' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'id'    => [
+						'type'        => 'integer',
+						'description' => 'The post ID to delete.',
+					],
+					'force' => [
+						'type'        => 'boolean',
+						'description' => 'If true, permanently delete instead of moving to trash.',
+						'default'     => false,
+					],
 				],
 				'required' => [ 'id' ],
 			],

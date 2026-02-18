@@ -61,8 +61,30 @@ class Frontman_UI {
 	 * (no wp-admin chrome). The client is loaded from the production CDN.
 	 */
 	public function render_page(): void {
-		$client_url     = 'https://app.frontman.sh/frontman.es.js';
-		$client_css_url = 'https://app.frontman.sh/frontman.css';
+		$is_dev = (bool) $this->settings->get( 'dev_mode', false );
+
+		// "host" is the Frontman cloud server used for WebSocket, auth tokens, and API calls.
+		// In production: api.frontman.sh. In dev: frontman.local:4000 (or FRONTMAN_HOST env var).
+		if ( $is_dev ) {
+			$host        = $this->settings->get( 'frontman_host', 'frontman.local:4000' );
+			$dev_port    = (int) $this->settings->get( 'dev_client_port', 5173 );
+			$base_js_url = "http://localhost:{$dev_port}/src/Main.res.mjs";
+			$client_css  = ''; // Vite injects CSS via HMR in dev
+		} else {
+			$host        = 'api.frontman.sh';
+			$base_js_url = 'https://app.frontman.sh/frontman.es.js';
+			$client_css  = 'https://app.frontman.sh/frontman.css';
+		}
+
+		// The client reads host + clientName from import.meta.url query params.
+		// This is how all Frontman adapters pass the Frontman server host to the client bundle.
+		$client_url = add_query_arg(
+			[
+				'host'       => $host,
+				'clientName' => 'wordpress',
+			],
+			$base_js_url
+		);
 
 		// Inline runtime config — same shape as FrontmanCore__UIShell produces
 		// for Vite/Astro/Next.js. The client reads window.__frontmanRuntime.
@@ -79,7 +101,9 @@ class Frontman_UI {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title><?php esc_html_e( 'Frontman', 'frontman' ); ?></title>
-	<link rel="stylesheet" href="<?php echo esc_url( $client_css_url ); ?>">
+	<?php if ( $client_css ) : ?>
+	<link rel="stylesheet" href="<?php echo esc_url( $client_css ); ?>">
+	<?php endif; ?>
 	<style>
 		html, body, #root {
 			height: 100%;
@@ -91,6 +115,7 @@ class Frontman_UI {
 <body>
 	<div id="root"></div>
 	<script>window.__frontmanRuntime=<?php echo $runtime_config; ?></script>
+	<script>if(typeof process==="undefined"){window.process={env:{NODE_ENV:"production"}}}</script>
 	<script type="module" src="<?php echo esc_url( $client_url ); ?>"></script>
 </body>
 </html>

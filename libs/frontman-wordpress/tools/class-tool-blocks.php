@@ -18,11 +18,15 @@ class Frontman_Tool_Blocks {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_blocks',
-			description: "Lists all blocks in a post's content.\n\nParameters:\n- post_id (required): The post ID to list blocks from.\n\nReturns an array of blocks with their name, attributes, and index.",
+			description: 'Lists all Gutenberg blocks in a post\'s content. Returns each block\'s name, attributes, and index.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'post_id' => [ 'type' => 'integer' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'post_id' => [
+						'type'        => 'integer',
+						'description' => 'The post ID to list blocks from.',
+					],
 				],
 				'required' => [ 'post_id' ],
 			],
@@ -31,12 +35,19 @@ class Frontman_Tool_Blocks {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_read_block',
-			description: "Reads a single block from a post by index.\n\nParameters:\n- post_id (required): The post ID.\n- index (required): Zero-based block index.",
+			description: 'Reads a single Gutenberg block from a post by its zero-based index. Returns full block markup and attributes.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'post_id' => [ 'type' => 'integer' ],
-					'index'   => [ 'type' => 'integer' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'post_id' => [
+						'type'        => 'integer',
+						'description' => 'The post ID containing the block.',
+					],
+					'index'   => [
+						'type'        => 'integer',
+						'description' => 'Zero-based index of the block to read.',
+					],
 				],
 				'required' => [ 'post_id', 'index' ],
 			],
@@ -45,13 +56,23 @@ class Frontman_Tool_Blocks {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_update_block',
-			description: "Replaces a block at a given index in a post.\n\nParameters:\n- post_id (required): The post ID.\n- index (required): Zero-based block index to replace.\n- block_markup (required): The new block markup (HTML with block comments).",
+			description: 'Replaces a Gutenberg block at a given index in a post with new block markup.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'post_id'      => [ 'type' => 'integer' ],
-					'index'        => [ 'type' => 'integer' ],
-					'block_markup' => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'post_id'      => [
+						'type'        => 'integer',
+						'description' => 'The post ID containing the block.',
+					],
+					'index'        => [
+						'type'        => 'integer',
+						'description' => 'Zero-based index of the block to replace.',
+					],
+					'block_markup' => [
+						'type'        => 'string',
+						'description' => 'The new block markup (HTML with Gutenberg block comments, e.g. <!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->).',
+					],
 				],
 				'required' => [ 'post_id', 'index', 'block_markup' ],
 			],
@@ -60,13 +81,23 @@ class Frontman_Tool_Blocks {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_insert_block',
-			description: "Inserts a new block into a post at a given position.\n\nParameters:\n- post_id (required): The post ID.\n- index (optional): Zero-based position to insert at. Appends to end if omitted.\n- block_markup (required): The block markup (HTML with block comments).",
+			description: 'Inserts a new Gutenberg block into a post at a given position. Appends to end if index is omitted.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'post_id'      => [ 'type' => 'integer' ],
-					'index'        => [ 'type' => 'integer' ],
-					'block_markup' => [ 'type' => 'string' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'post_id'      => [
+						'type'        => 'integer',
+						'description' => 'The post ID to insert the block into.',
+					],
+					'index'        => [
+						'type'        => 'integer',
+						'description' => 'Zero-based position to insert at. Appends to end if omitted.',
+					],
+					'block_markup' => [
+						'type'        => 'string',
+						'description' => 'The block markup to insert (HTML with Gutenberg block comments).',
+					],
 				],
 				'required' => [ 'post_id', 'block_markup' ],
 			],

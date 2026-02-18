@@ -18,21 +18,26 @@ class Frontman_Tool_Menus {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_menus',
-			description: "Lists all registered navigation menus and their items.\n\nNo parameters required.",
+			description: 'Lists all registered navigation menus with their item counts and assigned theme locations.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => new \stdClass(),
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => new \stdClass(),
 			],
 			handler: [ $this, 'list_menus' ],
 		) );
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_read_menu',
-			description: "Reads a single navigation menu with all its items.\n\nParameters:\n- id (required): The menu term ID.",
+			description: 'Reads a single navigation menu with all its items, including URLs, types, and hierarchy.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'id' => [ 'type' => 'integer' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'id' => [
+						'type'        => 'integer',
+						'description' => 'The menu term ID (from wp_list_menus).',
+					],
 				],
 				'required' => [ 'id' ],
 			],
@@ -41,14 +46,27 @@ class Frontman_Tool_Menus {
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_update_menu_item',
-			description: "Updates a menu item's properties.\n\nParameters:\n- menu_item_id (required): The menu item (post) ID.\n- title (optional): New menu item title.\n- url (optional): New URL for custom link items.\n- position (optional): New menu order position.",
+			description: 'Updates a menu item\'s title, URL, or position. Only the fields you provide will be changed.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'menu_item_id' => [ 'type' => 'integer' ],
-					'title'        => [ 'type' => 'string' ],
-					'url'          => [ 'type' => 'string' ],
-					'position'     => [ 'type' => 'integer' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'menu_item_id' => [
+						'type'        => 'integer',
+						'description' => 'The menu item post ID (from wp_read_menu).',
+					],
+					'title'        => [
+						'type'        => 'string',
+						'description' => 'New display title for the menu item.',
+					],
+					'url'          => [
+						'type'        => 'string',
+						'description' => 'New URL for custom link menu items.',
+					],
+					'position'     => [
+						'type'        => 'integer',
+						'description' => 'New menu order position (1-based).',
+					],
 				],
 				'required' => [ 'menu_item_id' ],
 			],

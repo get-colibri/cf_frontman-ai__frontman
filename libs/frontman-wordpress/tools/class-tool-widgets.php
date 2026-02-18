@@ -18,23 +18,34 @@ class Frontman_Tool_Widgets {
 	public function register( Frontman_Tools $tools ): void {
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_list_widget_areas',
-			description: "Lists all registered widget areas (sidebars) and their active widgets.\n\nNo parameters required.",
+			description: 'Lists all registered widget areas (sidebars) and their active widget IDs.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => new \stdClass(),
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => new \stdClass(),
 			],
 			handler: [ $this, 'list_widget_areas' ],
 		) );
 
 		$tools->add( new Frontman_Tool_Definition(
 			name: 'wp_update_widget',
-			description: "Updates a widget's settings in a sidebar.\n\nParameters:\n- sidebar_id (required): The sidebar/widget area ID.\n- widget_id (required): The widget instance ID (e.g. \"text-2\").\n- settings (required): Object with the new widget settings.",
+			description: 'Updates a widget\'s settings in a sidebar. Merges the provided settings with existing ones.',
 			input_schema: [
-				'type'       => 'object',
-				'properties' => [
-					'sidebar_id' => [ 'type' => 'string' ],
-					'widget_id'  => [ 'type' => 'string' ],
-					'settings'   => [ 'type' => 'object' ],
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => [
+					'sidebar_id' => [
+						'type'        => 'string',
+						'description' => 'The sidebar/widget area ID (from wp_list_widget_areas).',
+					],
+					'widget_id'  => [
+						'type'        => 'string',
+						'description' => 'The widget instance ID (e.g. "text-2", "categories-3").',
+					],
+					'settings'   => [
+						'type'        => 'object',
+						'description' => 'Key-value pairs of widget settings to update.',
+					],
 				],
 				'required' => [ 'sidebar_id', 'widget_id', 'settings' ],
 			],

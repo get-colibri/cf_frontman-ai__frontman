@@ -44,7 +44,7 @@ require_once FRONTMAN_PLUGIN_DIR . 'tools/class-tool-widgets.php';
  * Main plugin bootstrap.
  */
 function frontman_init(): void {
-	// Register settings page (admin menu + settings fields).
+	// Register settings (admin_init fields only — menu added later).
 	$settings = new Frontman_Settings();
 	$settings->register();
 
@@ -63,7 +63,10 @@ function frontman_init(): void {
 	$router = new Frontman_Router( $tools, $proxy, $settings, $ui );
 
 	// Register request interception (parse_request) and admin menu.
+	// UI must register before Settings so the parent menu page exists
+	// when the Settings submenu is added.
 	$router->register();
 	$ui->register();
+	$settings->register_menu();
 }
 add_action( 'init', 'frontman_init' );
