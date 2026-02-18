@@ -83,12 +83,8 @@ class Frontman_Tool_Options {
 						'description' => 'The option name to update.',
 					],
 					'value' => [
-						'description' => 'The new value for the option. Can be a string, number, or boolean.',
-						'oneOf'       => [
-							[ 'type' => 'string' ],
-							[ 'type' => 'number' ],
-							[ 'type' => 'boolean' ],
-						],
+						'type'        => 'string',
+						'description' => 'The new value for the option. Pass numbers and booleans as strings (e.g. "10", "true").',
 					],
 				],
 				'required' => [ 'name', 'value' ],
