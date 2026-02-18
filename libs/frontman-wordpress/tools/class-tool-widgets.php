@@ -43,8 +43,8 @@ class Frontman_Tool_Widgets {
 						'description' => 'The widget instance ID (e.g. "text-2", "categories-3").',
 					],
 					'settings'   => [
-						'type'        => 'object',
-						'description' => 'Key-value pairs of widget settings to update.',
+						'type'        => 'string',
+						'description' => 'JSON-encoded object of widget settings to update (e.g. "{\"title\":\"My Widget\",\"text\":\"Hello\"}").',
 					],
 				],
 				'required' => [ 'sidebar_id', 'widget_id', 'settings' ],
@@ -85,7 +85,8 @@ class Frontman_Tool_Widgets {
 	public function update_widget( array $input ): array {
 		$sidebar_id = sanitize_key( $input['sidebar_id'] ?? '' );
 		$widget_id  = sanitize_text_field( $input['widget_id'] ?? '' );
-		$settings   = $input['settings'] ?? [];
+		$raw        = $input['settings'] ?? '{}';
+		$settings   = is_string( $raw ) ? ( json_decode( $raw, true ) ?? [] ) : ( is_array( $raw ) ? $raw : [] );
 
 		if ( empty( $sidebar_id ) || empty( $widget_id ) ) {
 			return [
