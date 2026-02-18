@@ -25,6 +25,7 @@ define( 'FRONTMAN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FRONTMAN_PLUGIN_FILE', __FILE__ );
 
 // Autoload plugin classes.
+require_once FRONTMAN_PLUGIN_DIR . 'includes/class-frontman-auth.php';
 require_once FRONTMAN_PLUGIN_DIR . 'includes/class-frontman-tools.php';
 require_once FRONTMAN_PLUGIN_DIR . 'includes/class-frontman-proxy.php';
 require_once FRONTMAN_PLUGIN_DIR . 'includes/class-frontman-router.php';
@@ -43,7 +44,7 @@ require_once FRONTMAN_PLUGIN_DIR . 'tools/class-tool-widgets.php';
  * Main plugin bootstrap.
  */
 function frontman_init(): void {
-	// Register settings page.
+	// Register settings page (admin menu + settings fields).
 	$settings = new Frontman_Settings();
 	$settings->register();
 
@@ -56,13 +57,13 @@ function frontman_init(): void {
 	( new Frontman_Tool_Templates() )->register( $tools );
 	( new Frontman_Tool_Widgets() )->register( $tools );
 
-	// Register the REST API router.
+	// Build the UI renderer and router.
+	$ui     = new Frontman_UI( $settings );
 	$proxy  = new Frontman_Proxy( $settings );
-	$router = new Frontman_Router( $tools, $proxy, $settings );
-	$router->register();
+	$router = new Frontman_Router( $tools, $proxy, $settings, $ui );
 
-	// Register the UI page.
-	$ui = new Frontman_UI( $settings );
+	// Register request interception (parse_request) and admin menu.
+	$router->register();
 	$ui->register();
 }
 add_action( 'init', 'frontman_init' );
