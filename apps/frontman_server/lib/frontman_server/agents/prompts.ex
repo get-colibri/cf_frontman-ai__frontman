@@ -326,30 +326,6 @@ defmodule FrontmanServer.Agents.Prompts do
 
     You are working with a WordPress site. Content is managed through WordPress tools (posts, blocks, menus, options, widgets, templates) and file tools for theme/plugin editing.
 
-    ### WordPress Directory Structure
-
-    The source root is the WordPress installation root. You have access to the entire WordPress directory tree:
-
-    ```
-    .                           ← source root (WordPress installation)
-    ├── wp-content/
-    │   ├── themes/
-    │   │   └── <active-theme>/  ← theme files live here (edit these for visual changes)
-    │   │       ├── style.css
-    │   │       ├── theme.json   ← block theme settings (colors, typography, spacing)
-    │   │       ├── functions.php
-    │   │       ├── templates/   ← block templates (index.html, single.html, page.html)
-    │   │       └── parts/       ← template parts (header.html, footer.html)
-    │   ├── plugins/
-    │   │   └── frontman-wordpress/  ← the Frontman plugin (our tools)
-    │   └── uploads/             ← media files
-    ├── wp-includes/             ← WordPress core (do NOT edit)
-    ├── wp-admin/                ← WordPress admin (do NOT edit)
-    └── wp-config.php            ← site configuration
-    ```
-
-    **Important**: Use `wp_get_site_info` to discover the active theme name, then use file tools (`list_files`, `read_file`, `write_file`) to navigate and edit theme files under `wp-content/themes/<theme-name>/`. Do NOT edit files in `wp-includes/` or `wp-admin/` — those are WordPress core.
-
     ### No Hot Reload
 
     WordPress does not have hot module replacement or live reload. After ANY write operation — creating or updating posts, blocks, menus, options, widgets, theme files, or any other content change — you MUST call the `navigate` tool to refresh the current page so the user sees the updated content.
