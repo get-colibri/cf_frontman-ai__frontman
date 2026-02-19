@@ -13,7 +13,7 @@ class Frontman_Settings {
 	private const OPTION_KEY = 'frontman_settings';
 
 	private const DEFAULTS = [
-		'standalone_host'  => '127.0.0.1',
+		'standalone_host'  => 'localhost',
 		'standalone_port'  => 4321,
 		'dev_mode'         => false,
 		'dev_client_port'  => 5173,
@@ -67,7 +67,7 @@ class Frontman_Settings {
 			[ $this, 'render_text_field' ],
 			'frontman-settings',
 			'frontman_standalone_section',
-			[ 'key' => 'standalone_host', 'placeholder' => '127.0.0.1' ],
+			[ 'key' => 'standalone_host', 'placeholder' => 'localhost' ],
 		);
 
 		add_settings_field(
