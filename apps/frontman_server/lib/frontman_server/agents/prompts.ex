@@ -201,6 +201,7 @@ defmodule FrontmanServer.Agents.Prompts do
   defp maybe_append(prompt, false, _guidance_fn), do: prompt
 
   defp append_framework_guidance(prompt, "nextjs"), do: prompt <> "\n" <> nextjs_guidance()
+  defp append_framework_guidance(prompt, "wordpress"), do: prompt <> "\n" <> wordpress_guidance()
   defp append_framework_guidance(prompt, _), do: prompt
 
   # Append project rules (AGENTS.md, etc.) to the system prompt
@@ -316,6 +317,20 @@ defmodule FrontmanServer.Agents.Prompts do
 
     → Use ask_user tool: "Which text should I change to 'Danni'?"
       Options: ["Replace entire sentence", "Replace 'Documentation'", "Other"]
+    """
+  end
+
+  defp wordpress_guidance do
+    """
+    ## WordPress
+
+    You are working with a WordPress site. Content is managed through WordPress tools (posts, blocks, menus, options, widgets, templates).
+
+    ### No Hot Reload
+
+    WordPress does not have hot module replacement or live reload. After ANY write operation — creating or updating posts, blocks, menus, options, widgets, or any other content change — you MUST call the `navigate` tool to refresh the current page so the user sees the updated content.
+
+    Always finish a write operation sequence with a navigate refresh.
     """
   end
 
