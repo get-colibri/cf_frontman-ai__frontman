@@ -19,6 +19,10 @@ Install the Frontman plugin, navigate to `/frontman` on your WordPress site, and
 
 No code editor required. No terminal. Just a chat interface alongside a live view of your site.
 
+<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;margin:2rem 0;">
+  <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" src="https://www.youtube.com/embed/VIDEO_ID" title="Frontman WordPress Integration Demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+
 ### What the Agent Can Do
 
 Frontman for WordPress comes with a full set of tools purpose-built for the platform:
@@ -32,6 +36,26 @@ Frontman for WordPress comes with a full set of tools purpose-built for the plat
 - **File Operations**: Full filesystem access scoped to your WordPress installation — search, read, and write files.
 
 All of this through natural language. Say "change the site title to Star Wars Cantina" or "update the homepage hero text" and the agent handles the rest.
+
+### How Frontman Compares to Other AI WordPress Plugins
+
+There are already AI plugins in the WordPress ecosystem. Here's how Frontman is different.
+
+**AI Engine** (100k+ installs) and **StifLi Flex MCP** are the closest alternatives. Both expose WordPress tools to AI via MCP and let you manage content through chat. AI Engine is a mature, feature-rich plugin with chatbots, embeddings, content generation, and WooCommerce support. StifLi Flex MCP focuses on being a full MCP server with 117+ tools and connects to external clients like Claude Desktop and ChatGPT.
+
+Frontman takes a fundamentally different approach:
+
+- **Visual feedback loop.** Frontman shows a live preview of your site alongside the chat. When the agent edits a post or modifies your theme, you see the change immediately. Other plugins give you a chat panel in wp-admin — you have to navigate to your site separately to verify what changed.
+
+- **Theme and file editing.** AI Engine and StifLi work through the WordPress API — they can create posts, manage WooCommerce, update options. But they can't open your `style.css` and change a color, or edit a block template HTML file. Frontman has full filesystem access to your WordPress installation. It reads and writes theme files, searches code with grep, and understands your directory structure.
+
+- **Built for the frontend.** Other AI WordPress plugins started as chatbot/content-generation tools and added site management later. Frontman started as a frontend development tool — it was built to edit what users actually see. That shows in how it handles theme editing, template modifications, and visual changes.
+
+- **Cross-framework.** Frontman isn't WordPress-only. The same agent works with Next.js, Astro, and Vite. If your team works across frameworks, you get one tool that works everywhere.
+
+- **Fully open source.** Frontman's source code — every prompt, every tool definition, every piece of agent logic — is open on [GitHub](https://github.com/frontman-ai/frontman) under Apache 2.0. You can see exactly what the agent does, modify it, or self-host it.
+
+The tradeoff: Frontman is newer and more experimental. AI Engine has 100k+ installs, a Pro tier, WooCommerce tools, embeddings, and years of polish. If you need a production-ready AI content pipeline today, AI Engine is solid. If you want an agent that can see and edit your actual site — theme files, content, and all — that's what Frontman does.
 
 ### Architecture
 
