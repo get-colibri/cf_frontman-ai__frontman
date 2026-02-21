@@ -23,8 +23,8 @@ class Frontman_Proxy {
 	 * Get the standalone server base URL.
 	 */
 	private function standalone_url(): string {
-		$host = $this->settings->get( 'standalone_host', '127.0.0.1' );
-		$port = (int) $this->settings->get( 'standalone_port', 4321 );
+		$host = $this->settings->get( 'standalone_host', 'localhost' );
+		$port = (int) $this->settings->get( 'standalone_port', 19478 );
 		return "http://{$host}:{$port}";
 	}
 

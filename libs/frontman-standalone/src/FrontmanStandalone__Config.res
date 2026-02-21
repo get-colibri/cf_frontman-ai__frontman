@@ -12,7 +12,7 @@ type t = {
   serverVersion: string,
 }
 
-let defaultPort = 4321
+let defaultPort = 19478
 let defaultHostname = "127.0.0.1"
 let defaultBasePath = "frontman"
 let defaultServerName = "frontman-standalone"

@@ -1,6 +1,6 @@
 // CLI entry point for the standalone Frontman server
 //
-// Usage: frontman-standalone --project-root /path/to/project [--port 4321] [--source-root /path]
+// Usage: frontman-standalone --project-root /path/to/project [--port 19478] [--source-root /path]
 
 module Bun = Bindings__Bun
 module Config = FrontmanStandalone__Config

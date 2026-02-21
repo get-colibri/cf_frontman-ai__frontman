@@ -14,7 +14,7 @@ class Frontman_Settings {
 
 	private const DEFAULTS = [
 		'standalone_host'  => 'localhost',
-		'standalone_port'  => 4321,
+		'standalone_port'  => 19478,
 		'dev_mode'         => false,
 		'dev_client_port'  => 5173,
 		'frontman_host'    => 'frontman.local:4000',
@@ -76,7 +76,7 @@ class Frontman_Settings {
 			[ $this, 'render_text_field' ],
 			'frontman-settings',
 			'frontman_standalone_section',
-			[ 'key' => 'standalone_port', 'placeholder' => '4321', 'type' => 'number' ],
+			[ 'key' => 'standalone_port', 'placeholder' => '19478', 'type' => 'number' ],
 		);
 
 		// --- Development section ---
