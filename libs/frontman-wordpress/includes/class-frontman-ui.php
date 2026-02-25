@@ -59,8 +59,12 @@ class Frontman_UI {
 	 *
 	 * Called directly by the router — this outputs a complete HTML document
 	 * (no wp-admin chrome). The client is loaded from the production CDN.
+	 *
+	 * @param string|null $preview_path Path to load in the web preview iframe.
+	 *                                  null or '/' means homepage. '/about' previews /about.
+	 *                                  Set by suffix-based routing: /about/frontman → '/about'.
 	 */
-	public function render_page(): void {
+	public function render_page( ?string $preview_path = null ): void {
 		$is_dev = (bool) $this->settings->get( 'dev_mode', false );
 
 		// "host" is the Frontman cloud server used for WebSocket, auth tokens, and API calls.
@@ -88,9 +92,20 @@ class Frontman_UI {
 
 		// Inline runtime config — same shape as FrontmanCore__UIShell produces
 		// for Vite/Astro/Next.js. The client reads window.__frontmanRuntime.
+		// basePath is used by Client__BrowserUrl.syncBrowserUrl() to keep the
+		// browser URL in sync as the user navigates within the preview iframe.
 		$runtime_config = wp_json_encode( [
 			'framework' => 'wordpress',
+			'basePath'  => 'frontman',
 		] );
+
+		// Build the entrypoint URL for the web preview iframe.
+		// When suffix routing is used (e.g. /about/frontman), this points the
+		// preview at /about. The client reads this from the DOM via getInitialUrl().
+		$entrypoint_url = null;
+		if ( $preview_path !== null && $preview_path !== '/' ) {
+			$entrypoint_url = home_url( $preview_path );
+		}
 
 		status_header( 200 );
 		header( 'Content-Type: text/html; charset=utf-8' );
@@ -113,6 +128,9 @@ class Frontman_UI {
 	</style>
 </head>
 <body>
+	<?php if ( $entrypoint_url ) : ?>
+	<script type="template" id="frontman-entrypoint-url"><?php echo esc_url( $entrypoint_url ); ?></script>
+	<?php endif; ?>
 	<div id="root"></div>
 	<script>window.__frontmanRuntime=<?php echo $runtime_config; ?></script>
 	<script>if(typeof process==="undefined"){window.process={env:{NODE_ENV:"production"}}}</script>

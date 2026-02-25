@@ -269,24 +269,9 @@ let make = (
         <ToolGroupBlock group messageId={group.id} isLastToolGroup isLastItem isAgentRunning />
       </React.Fragment>
 
-    | TodoToolCall(tc, _) =>
-      // Use stable tool call ID for key
-      let messageId = `todo-${tc.id}`
-      // Extract TODOs from input first (for todo_write), then result
-      let todos = TodoUtils.extractTodos(~input=tc.input, ~result=tc.result)
-      let isLoading = switch tc.state {
-      | InputStreaming | InputAvailable => true
-      | OutputAvailable | OutputError => false
-      }
-
-      <React.Fragment key={messageId}>
-        <TodoListBlock
-          todos
-          isLoading
-          messageId
-
-        />
-      </React.Fragment>
+    | TodoToolCall(_, _) =>
+      // Todo tool calls are hidden from the chat — they're internal bookkeeping
+      React.null
 
     // Handle any unexpected message types
     | UserMsg(_, _) | AssistantMsg(_, _) => React.null

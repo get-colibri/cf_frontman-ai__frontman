@@ -135,7 +135,7 @@ class Frontman_Tool_Blocks {
 			'index'      => $index,
 			'name'       => $block['blockName'],
 			'attributes' => $block['attrs'] ?? [],
-			'innerText'  => wp_strip_all_tags( implode( '', $block['innerHTML'] ?? [] ) ),
+			'innerText'  => wp_strip_all_tags( $block['innerHTML'] ?? '' ),
 		];
 	}
 

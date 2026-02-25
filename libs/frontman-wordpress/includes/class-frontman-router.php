@@ -6,10 +6,15 @@
  * them as posts/pages. This means the client can call the same paths as
  * all other Frontman adapters (Vite, Astro, Next.js):
  *
- *   GET  /frontman          → Serve the UI
- *   GET  /frontman/tools    → Merged tool list (standalone + WP)
- *   POST /frontman/tools/call → Dispatch tool call (SSE)
+ *   GET  /frontman                        → Serve the UI (preview: homepage)
+ *   GET  /about/frontman                  → Serve the UI (preview: /about)
+ *   GET  /frontman/tools                  → Merged tool list (standalone + WP)
+ *   POST /frontman/tools/call             → Dispatch tool call (SSE)
  *   POST /frontman/resolve-source-location → Proxy to standalone
+ *
+ * Suffix-based routing: appending /frontman to any WordPress URL opens
+ * the Frontman UI with that page loaded in the web preview. The browser
+ * URL stays in sync as the user navigates within the preview iframe.
  *
  * Every route is guarded by Frontman_Auth::check() — only logged-in
  * administrators can access any Frontman endpoint.
@@ -47,60 +52,141 @@ class Frontman_Router {
 	}
 
 	/**
-	 * Intercept /frontman/* requests before WordPress resolves them.
+	 * Intercept Frontman requests before WordPress resolves them.
+	 *
+	 * Handles two route styles:
+	 *   Prefix: /frontman/tools, /frontman/tools/call (API endpoints)
+	 *   Suffix: /any/path/frontman (UI with that path in the web preview)
 	 */
 	public function intercept( \WP $wp ): void {
-		// Get the raw request path, stripping the site subdirectory if present.
 		$request_uri = $this->get_request_path();
+		$method      = strtoupper( $_SERVER['REQUEST_METHOD'] ?? 'GET' );
 
-		// Match /frontman or /frontman/... paths.
-		if ( ! preg_match( '#^/frontman(?:/(.*))?$#', $request_uri, $matches ) ) {
+		// 1. Prefix API routes — /frontman/tools, /frontman/tools/call, etc.
+		if ( preg_match( '#^/frontman/(.+)$#', $request_uri, $matches ) ) {
+			$sub_path = $matches[1];
+
+			$this->require_auth( true );
+
+			switch ( true ) {
+				case $method === 'GET' && $sub_path === 'tools':
+					$this->handle_get_tools();
+					exit;
+
+				case $method === 'POST' && $sub_path === 'tools/call':
+					$this->handle_tool_call();
+					exit;
+
+				case $method === 'POST' && $sub_path === 'resolve-source-location':
+					$this->handle_resolve_source_location();
+					exit;
+
+				case $method === 'OPTIONS':
+					status_header( 204 );
+					exit;
+
+				default:
+					status_header( 404 );
+					header( 'Content-Type: application/json; charset=utf-8' );
+					echo wp_json_encode( [ 'error' => 'Not found' ] );
+					exit;
+			}
+		}
+
+		// 2. Suffix UI routes — GET /any/path/frontman or GET /frontman (bare).
+		//    Only match GET — POST/PUT to suffix paths are not Frontman routes.
+		$suffix_prefix = $this->get_suffix_prefix( $request_uri );
+		if ( $suffix_prefix === null || $method !== 'GET' ) {
 			return;
 		}
 
-		$sub_path = $matches[1] ?? '';
-		$method   = strtoupper( $_SERVER['REQUEST_METHOD'] ?? 'GET' );
+		$this->require_auth( false );
 
-		// Auth check — every Frontman route requires an admin session.
+		// Canonical redirect: strip nested /frontman/frontman segments.
+		$canonical = $this->get_canonical_redirect( $suffix_prefix );
+		if ( $canonical !== null ) {
+			wp_safe_redirect( home_url( $canonical ), 302 );
+			exit;
+		}
+
+		// Build the preview path from the suffix prefix.
+		$preview_path = ( $suffix_prefix === '' ) ? '/' : '/' . $suffix_prefix;
+		$this->ui->render_page( $preview_path );
+		exit;
+	}
+
+	/**
+	 * Check auth and send error response if unauthorized.
+	 */
+	private function require_auth( bool $is_api ): void {
 		$auth = Frontman_Auth::check();
 		if ( is_wp_error( $auth ) ) {
-			$is_api = ( $sub_path !== '' );
 			Frontman_Auth::send_error( $auth, $is_api );
 		}
+	}
 
-		// Route the request.
-		switch ( true ) {
-			// GET /frontman — serve the UI.
-			case $method === 'GET' && $sub_path === '':
-				$this->ui->render_page();
-				exit;
+	/**
+	 * Extract the prefix path from a suffix-based UI route.
+	 *
+	 * Mirrors FrontmanCore__Middleware.getSuffixRoutePrefix().
+	 *
+	 * /frontman           → '' (bare route, preview homepage)
+	 * /about/frontman     → 'about'
+	 * /blog/post/frontman → 'blog/post'
+	 * /frontman/tools     → null (not a suffix route — has sub-path)
+	 *
+	 * @return string|null The prefix path (may be empty), or null if not a suffix route.
+	 */
+	private function get_suffix_prefix( string $path ): ?string {
+		$base = 'frontman';
 
-			// GET /frontman/tools — merged tool list.
-			case $method === 'GET' && $sub_path === 'tools':
-				$this->handle_get_tools();
-				exit;
-
-			// POST /frontman/tools/call — dispatch tool call (SSE).
-			case $method === 'POST' && $sub_path === 'tools/call':
-				$this->handle_tool_call();
-				exit;
-
-			// POST /frontman/resolve-source-location — proxy to standalone.
-			case $method === 'POST' && $sub_path === 'resolve-source-location':
-				$this->handle_resolve_source_location();
-				exit;
-
-			// OPTIONS — handle CORS preflight (same-origin, but be explicit).
-			case $method === 'OPTIONS':
-				status_header( 204 );
-				exit;
-
-			default:
-				status_header( 404 );
-				header( 'Content-Type: application/json; charset=utf-8' );
-				echo wp_json_encode( [ 'error' => 'Not found' ] );
-				exit;
+		// Bare /frontman route.
+		if ( $path === '/' . $base ) {
+			return '';
 		}
+
+		// Suffix route: /anything/frontman.
+		$suffix = '/' . $base;
+		if ( str_ends_with( $path, $suffix ) ) {
+			// Strip leading slash and trailing /frontman.
+			$prefix = substr( $path, 1, strlen( $path ) - 1 - strlen( $suffix ) );
+			return $prefix;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Detect nested /frontman/frontman segments and return canonical path.
+	 *
+	 * Mirrors FrontmanCore__Middleware.getCanonicalRedirect().
+	 * Prevents frontman-in-frontman loops when the iframe navigates
+	 * to a URL that already contains /frontman.
+	 *
+	 * @return string|null Canonical path to redirect to, or null if already canonical.
+	 */
+	private function get_canonical_redirect( string $prefix_path ): ?string {
+		$base   = 'frontman';
+		$suffix = '/' . $base;
+
+		// Exact: prefix IS "frontman" (from /frontman/frontman).
+		if ( $prefix_path === $base ) {
+			return '/' . $base;
+		}
+
+		// Trailing nested: prefix ends with /frontman.
+		if ( str_ends_with( $prefix_path, $suffix ) ) {
+			$stripped = substr( $prefix_path, 0, strlen( $prefix_path ) - strlen( $suffix ) );
+			return ( $stripped === '' ) ? '/' . $base : '/' . $stripped . '/' . $base;
+		}
+
+		// Leading nested: prefix starts with frontman/.
+		if ( str_starts_with( $prefix_path, $base . '/' ) ) {
+			$rest = substr( $prefix_path, strlen( $base ) + 1 );
+			return ( $rest === '' ) ? '/' . $base : '/' . $rest . '/' . $base;
+		}
+
+		return null;
 	}
 
 	/**
