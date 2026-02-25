@@ -358,4 +358,17 @@ let make = (~group: Types.toolGroup, ~defaultExpanded: bool=false, ~isLastToolGr
     }
   </div>
 }
+let make = React.memoCustomCompareProps(make, (prev: props<_, _, _, _, _, _>, next: props<_, _, _, _, _, _>) => {
+  prev.group.id == next.group.id &&
+  prev.isLastToolGroup == next.isLastToolGroup &&
+  prev.isLastItem == next.isLastItem &&
+  prev.isAgentRunning == next.isAgentRunning &&
+  Array.length(prev.group.toolCalls) == Array.length(next.group.toolCalls) &&
+  (Array.length(prev.group.toolCalls) == 0 ||
+    {
+      let prevLast = prev.group.toolCalls->Array.getUnsafe(Array.length(prev.group.toolCalls) - 1)
+      let nextLast = next.group.toolCalls->Array.getUnsafe(Array.length(next.group.toolCalls) - 1)
+      prevLast.state == nextLast.state && prevLast.id == nextLast.id
+    })
+})
 

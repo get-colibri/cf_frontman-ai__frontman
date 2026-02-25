@@ -13,6 +13,30 @@ module RuntimeConfig = Client__RuntimeConfig
 type connectionState = Reducer.Selectors.connectionStatus
 type mcpState = Reducer.Selectors.mcpStatus
 
+// rAF-based text delta buffering — coalesces rapid WebSocket chunks
+// into one React state update per animation frame instead of per chunk
+let textDeltaBuffer: ref<Dict.t<string>> = ref(Dict.make())
+let textDeltaRafId: ref<option<int>> = ref(None)
+
+let flushTextDeltas = () => {
+  let buffer = textDeltaBuffer.contents
+  textDeltaBuffer := Dict.make()
+  textDeltaRafId := None
+  buffer->Dict.forEachWithKey((text, taskId) => {
+    Client__State.Actions.textDeltaReceived(~taskId, ~text)
+  })
+}
+
+let bufferTextDelta = (~taskId: string, ~text: string) => {
+  let current = textDeltaBuffer.contents->Dict.get(taskId)->Option.getOr("")
+  textDeltaBuffer.contents->Dict.set(taskId, current ++ text)
+  switch textDeltaRafId.contents {
+  | Some(_) => ()
+  | None =>
+    textDeltaRafId := Some(%raw(`requestAnimationFrame(flushTextDeltas)`))
+  }
+}
+
 // Context value type
 type contextValue = {
   connectionState: connectionState,
@@ -132,8 +156,9 @@ module Provider = {
       | AgentMessageChunk({content}) =>
         // Per ACP spec: first agent_message_chunk implicitly signals message start.
         // Message end is signaled by session/prompt response with stopReason.
+        // Buffered via rAF to coalesce rapid chunks into one render per frame.
         content->Option.flatMap(c => c.text)->Option.forEach(text => {
-          Client__State.Actions.textDeltaReceived(~taskId, ~text)
+          bufferTextDelta(~taskId, ~text)
         })
       | UserMessageChunk({content, timestamp}) =>
         content.text->Option.forEach(text => {

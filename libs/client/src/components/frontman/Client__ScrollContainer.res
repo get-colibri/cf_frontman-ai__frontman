@@ -93,7 +93,7 @@ let make = (~className: option<string>=?, ~children: React.element) => {
   <StickToBottom
     className={containerClassName}
     initial="smooth"
-    resize="smooth"
+    resize="instant"
     role="log"
   >
     {children}
