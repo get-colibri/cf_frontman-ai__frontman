@@ -158,11 +158,29 @@ module Provider = {
           textDeltaBuffer.add(~taskId, ~text, ~timestamp)
         })
       | UserMessageChunk({content, timestamp}) =>
+        // Flush any buffered agent text before inserting the user message.
+        // During history replay, each agent_message_chunk is a complete historical
+        // response for the same taskId. Without this flush, the TextDeltaBuffer
+        // merges all agent responses into a single entry (it accumulates by taskId).
+        // Flushing here ensures the preceding agent message is dispatched and
+        // finalized (via completeStreamingMessage in UserMessageReceived) before
+        // the user message is inserted — preserving correct interleaving.
+        Client__TextDeltaBuffer.flush()
         getContentBlockText(content)->Option.forEach(text => {
           let id = `user-hydrated-${WebAPI.Global.crypto->WebAPI.Crypto.randomUUID}`
           Client__State.Actions.userMessageReceived(~taskId, ~id, ~text, ~timestamp)
         })
-      | ToolCall({toolCallId, title, parentAgentId, spawningToolName}) =>
+      | ToolCall({toolCallId, title, timestamp, parentAgentId, spawningToolName}) =>
+        // Flush buffered agent text before tool calls — same reason as UserMessageChunk.
+        // During replay, the preceding agent_message_chunk (often empty for tool-only
+        // responses) must be dispatched before the tool call arrives, otherwise the
+        // buffer merges it with the post-tool agent response.
+        Client__TextDeltaBuffer.flush()
+        // Use server timestamp when available (history replay), fall back to Date.now() (live)
+        let createdAt = switch timestamp {
+        | Some(ts) => Date.fromString(ts)->Date.getTime
+        | None => Date.now()
+        }
         Client__State.Actions.toolCallReceived(~taskId, ~toolCall={
           id: toolCallId,
           toolName: title,
@@ -171,7 +189,7 @@ module Provider = {
           result: None,
           errorText: None,
           state: Client__State__Types.Message.InputStreaming,
-          createdAt: Date.now(),
+          createdAt,
           parentAgentId,
           spawningToolName,
         })
@@ -245,6 +263,7 @@ module Provider = {
       [dispatch],
     )
 
+    // Submit a late tool result via the ACP session channel.
     // Extract auth redirect URL from ACP error state (encoded as "auth_required:<url>")
     let authRedirectUrl = switch state.acp {
     | Reducer.ACPError(msg) =>

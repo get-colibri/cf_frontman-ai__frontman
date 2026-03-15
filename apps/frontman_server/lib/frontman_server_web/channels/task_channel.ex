@@ -196,8 +196,14 @@ defmodule FrontmanServerWeb.TaskChannel do
            parsed_result,
            is_error
          ) do
-      {:ok, _interaction} ->
+      {:ok, _interaction, :notified} ->
         :ok
+
+      {:ok, _interaction, :no_executor} ->
+        # No live executor — this is a reconnected tool result (server restarted
+        # while the tool was pending). Check if all tools from the last agent
+        # response are now resolved and resume execution if so.
+        maybe_resume_after_tool_result(scope, task_id, socket)
 
       {:error, reason} ->
         Logger.warning(
@@ -280,7 +286,7 @@ defmodule FrontmanServerWeb.TaskChannel do
            error_message,
            true
          ) do
-      {:ok, _interaction} ->
+      {:ok, _interaction, _executor_status} ->
         :ok
 
       {:error, reason} ->
@@ -349,7 +355,13 @@ defmodule FrontmanServerWeb.TaskChannel do
       {:ok, task} ->
         # Stream history via session/update notifications
         stream_session_history(socket, task)
-        # Return ACP-compliant response
+
+        # Stream history, then re-dispatch unresolved interactive tools, then respond.
+        # All three are synchronous pushes on the same socket — the client
+        # receives them in order. The client handles QuestionReceived on both
+        # Loading and Loaded tasks, so no timing concerns.
+        socket = redispatch_unresolved_interactive_tools(task, socket)
+
         push(socket, "acp:message", JsonRpc.success_response(id, %{}))
         {:noreply, socket}
 
@@ -362,6 +374,80 @@ defmodule FrontmanServerWeb.TaskChannel do
 
         {:noreply, socket}
     end
+  end
+
+  # After storing a tool result with no live executor, check if all pending
+  # tools are now resolved. If so, resume the agent execution.
+  # Uses API key and model from the last prompt (stored on socket assigns).
+  defp maybe_resume_after_tool_result(scope, task_id, socket) do
+    case Tasks.get_task(scope, task_id) do
+      {:ok, task} ->
+        if Interaction.all_pending_tools_resolved?(task.interactions) do
+          Logger.info("All pending tools resolved for task #{task_id}, resuming agent execution")
+
+          mcp_tools = socket.assigns[:mcp_tools] || []
+          all_tools = mcp_tools |> Tools.prepare_for_task(task_id)
+          env_api_key = socket.assigns[:last_env_api_key] || %{}
+          model = socket.assigns[:last_model]
+          opts = [env_api_key: env_api_key, model: model, mcp_tool_defs: mcp_tools]
+
+          Tasks.maybe_start_execution(scope, task_id, all_tools, opts)
+        end
+
+      {:error, :not_found} ->
+        Logger.error("Task #{task_id} not found when trying to resume after tool result")
+    end
+  end
+
+  # Re-dispatches unresolved interactive tool calls after session/load.
+  #
+  # When a session has a ToolCall without a matching ToolResult (e.g., server
+  # restarted while a question was pending), re-send the tools/call MCP request
+  # so the client can execute the tool fresh. The response flows through the
+  # standard handle_tool_call_response path — no special reconnect logic needed.
+  defp redispatch_unresolved_interactive_tools(task, socket) do
+    mcp_tool_defs = socket.assigns[:mcp_tools] || []
+
+    unresolved = Interaction.unresolved_tool_calls(task.interactions)
+
+    unresolved
+    |> Enum.filter(fn tc ->
+      Tools.MCP.interactive_by_name?(mcp_tool_defs, tc.tool_name)
+    end)
+    |> Enum.reduce(socket, fn tc, acc_socket ->
+      Logger.info(
+        "Re-dispatching unresolved interactive tool: #{tc.tool_name} (#{tc.tool_call_id})"
+      )
+
+      request_id = System.unique_integer([:positive])
+
+      request =
+        MCP.tools_call_request(%MCP.ToolCallParams{
+          request_id: request_id,
+          tool_name: tc.tool_name,
+          arguments: tc.arguments,
+          call_id: tc.tool_call_id
+        })
+
+      pending_requests = acc_socket.assigns[:pending_requests] || %{}
+
+      # Build a tool_call struct matching what route_to_mcp uses
+      tool_call = %{
+        tool_call_id: tc.tool_call_id,
+        tool_name: tc.tool_name,
+        arguments: tc.arguments
+      }
+
+      acc_socket =
+        assign(
+          acc_socket,
+          :pending_requests,
+          Map.put(pending_requests, request_id, {:tool_call, tool_call})
+        )
+
+      push(acc_socket, "mcp:message", request)
+      acc_socket
+    end)
   end
 
   # Streams session history as ACP session/update notifications
@@ -402,8 +488,13 @@ defmodule FrontmanServerWeb.TaskChannel do
     # Prepare tools (domain service)
     all_tools = mcp_tools |> Tools.prepare_for_task(task_id)
 
-    # Track request ID (channel state)
-    socket = assign(socket, :pending_prompt_id, id)
+    # Track request ID and persist API key/model for potential re-execution
+    # (e.g., when a reconnected interactive tool result triggers resume)
+    socket =
+      socket
+      |> assign(:pending_prompt_id, id)
+      |> assign(:last_env_api_key, env_api_key)
+      |> assign(:last_model, model)
 
     opts = [env_api_key: env_api_key, model: model, mcp_tool_defs: mcp_tools]
 
@@ -804,6 +895,26 @@ defmodule FrontmanServerWeb.TaskChannel do
   def terminate(reason, socket) do
     task_id = socket.assigns[:task_id]
     Logger.info("Client disconnected from task #{task_id}: #{inspect(reason)}")
+
+    # Unblock any interactive tool executors that are waiting indefinitely
+    # for a client response. Without this, :infinity receive blocks forever
+    # after the client disconnects. Send a tool error so the agent can continue
+    # (it will get "Client disconnected" as the tool result).
+    pending_requests = socket.assigns[:pending_requests] || %{}
+
+    Enum.each(pending_requests, fn
+      {_id, {:tool_call, tool_call}} ->
+        Execution.notify_tool_result(
+          socket.assigns[:scope],
+          tool_call.tool_call_id,
+          "Client disconnected",
+          true
+        )
+
+      _ ->
+        :ok
+    end)
+
     :ok
   end
 end

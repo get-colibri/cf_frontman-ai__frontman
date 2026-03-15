@@ -508,6 +508,15 @@ module Selectors = {
     state.updateBannerDismissed
   }
 
+  // Pending question for the current task (shown in the drawer)
+  let pendingQuestion = (state: state): option<Client__Question__Types.pendingQuestion> => {
+    switch state.currentTask {
+    | Task.Selected(id) =>
+      state.tasks->Dict.get(id)->Option.flatMap(TaskReducer.Selectors.pendingQuestion)
+    | Task.New(_) => None
+    }
+  }
+
   // Whether the user has any API provider configured via state-tracked sources
   // (DB-stored OpenRouter key, Anthropic API key, or OAuth).
   // Env-injected keys (window.__frontmanRuntime) live outside state — check RuntimeConfig separately.
@@ -1412,7 +1421,23 @@ let next = (state: state, action) => {
     )
 
   | ClearAcpSession =>
-    {...state, acpSession: NoAcpSession}->StateReducer.update
+    // Clear pending questions across all tasks — the connection is gone,
+    // so we can't resolve tool promises via the channel. The resolver
+    // callbacks are now stale. When the user reconnects and loads the task,
+    // the 120s server timeout will have expired.
+    let updatedTasks = state.tasks->Dict.copy
+    updatedTasks->Dict.forEachWithKey((task, taskId) => {
+      switch TaskReducer.Selectors.pendingQuestion(task) {
+      | Some(_) =>
+        switch task {
+        | Task.Loaded(data) =>
+          updatedTasks->Dict.set(taskId, Task.Loaded({...data, pendingQuestion: None}))
+        | _ => ()
+        }
+      | None => ()
+      }
+    })
+    {...state, tasks: updatedTasks, acpSession: NoAcpSession}->StateReducer.update
 
   // ============================================================================
   // Global state actions

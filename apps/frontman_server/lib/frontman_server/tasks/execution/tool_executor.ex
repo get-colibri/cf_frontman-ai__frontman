@@ -32,7 +32,6 @@ defmodule FrontmanServer.Tasks.Execution.ToolExecutor do
   alias SwarmAi.Message.ContentPart
 
   @tool_timeout_ms 60_000
-  @interactive_tool_timeout_ms 120_000
 
   @doc """
   Returns a tool executor function for use with Swarm execution.
@@ -158,7 +157,7 @@ defmodule FrontmanServer.Tasks.Execution.ToolExecutor do
         )
 
       :not_found ->
-        execute_mcp_tool(tool_call, task_id, mcp_tool_defs)
+        execute_mcp_tool(scope, tool_call, task_id, mcp_tool_defs)
     end
   end
 
@@ -275,40 +274,64 @@ defmodule FrontmanServer.Tasks.Execution.ToolExecutor do
 
   # --- MCP Tool Execution ---
 
-  defp execute_mcp_tool(tool_call, task_id, mcp_tool_defs) do
+  defp execute_mcp_tool(scope, tool_call, task_id, mcp_tool_defs) do
     Logger.info("ToolExecutor: Routing to MCP tool #{tool_call.name}")
 
     tool_call_id = tool_call.id
 
-    # All MCP tools block until the client responds. Interactive tools
-    # (like question) get a longer timeout since they wait for user input.
-    timeout =
-      if Tools.MCP.interactive_by_name?(mcp_tool_defs, tool_call.name),
-        do: @interactive_tool_timeout_ms,
-        else: @tool_timeout_ms
+    if Tools.MCP.interactive_by_name?(mcp_tool_defs, tool_call.name) do
+      # Interactive tools (e.g., question) block indefinitely. The user may
+      # take minutes, hours, or days to respond. The executor unblocks when:
+      #   - The user responds (normal MCP tool result flow)
+      #   - The client disconnects (channel terminate sends error)
+      #   - The server restarts (process dies; reconnect re-dispatches)
+      receive do
+        {:tool_result, ^tool_call_id, content, is_error} ->
+          Registry.unregister(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id})
+          if is_error, do: {:error, content}, else: {:ok, content}
+      end
+    else
+      # Non-interactive MCP tools (navigate, screenshot, etc.) should respond
+      # quickly. Timeout is a legitimate error signal.
+      receive do
+        {:tool_result, ^tool_call_id, content, is_error} ->
+          Registry.unregister(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id})
+          if is_error, do: {:error, content}, else: {:ok, content}
+      after
+        @tool_timeout_ms ->
+          Registry.unregister(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id})
 
-    receive do
-      {:tool_result, ^tool_call_id, content, is_error} ->
-        Registry.unregister(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id})
-        if is_error, do: {:error, content}, else: {:ok, content}
-    after
-      timeout ->
-        Registry.unregister(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id})
+          Logger.error(
+            "ToolExecutor: MCP tool #{tool_call.name} timed out after #{@tool_timeout_ms}ms"
+          )
 
-        Logger.error("ToolExecutor: MCP tool #{tool_call.name} timed out after #{timeout}ms")
+          Sentry.capture_message("MCP tool timeout",
+            level: :error,
+            tags: %{error_type: "tool_timeout"},
+            extra: %{
+              tool_name: tool_call.name,
+              tool_call_id: tool_call_id,
+              task_id: task_id,
+              timeout_ms: @tool_timeout_ms
+            }
+          )
 
-        Sentry.capture_message("MCP tool timeout",
-          level: :error,
-          tags: %{error_type: "tool_timeout"},
-          extra: %{
-            tool_name: tool_call.name,
-            tool_call_id: tool_call_id,
-            task_id: task_id,
-            timeout_ms: timeout
-          }
-        )
+          error_msg = "Tool timeout: #{tool_call.name}"
 
-        {:error, "Tool timeout: #{tool_call.name}"}
+          # Persist the timeout error as a ToolResult so the DB is consistent
+          # (every ToolCall has a matching ToolResult). Without this, reconnect
+          # shows the tool as perpetually in-progress and unresolved_tool_calls
+          # falsely detects it as an orphan.
+          Tasks.add_tool_result(
+            scope,
+            task_id,
+            %{id: tool_call_id, name: tool_call.name},
+            error_msg,
+            true
+          )
+
+          {:error, error_msg}
+      end
     end
   end
 

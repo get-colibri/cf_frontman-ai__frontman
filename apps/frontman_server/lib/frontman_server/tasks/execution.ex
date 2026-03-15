@@ -100,18 +100,19 @@ defmodule FrontmanServer.Tasks.Execution do
 
   Routes the result to the blocking executor via Registry metadata.
   Called by the Tasks facade after persisting the tool result interaction.
-  No-ops when no executor is waiting (backend tools execute synchronously).
+  Returns `:notified` when the result was delivered to a live executor,
+  `:no_executor` when no executor was waiting (e.g., server restarted).
   """
-  @spec notify_tool_result(Scope.t(), String.t(), term(), boolean()) :: :ok
+  @spec notify_tool_result(Scope.t(), String.t(), term(), boolean()) :: :notified | :no_executor
   def notify_tool_result(%Scope{}, tool_call_id, result, is_error) do
     case Elixir.Registry.lookup(FrontmanServer.ToolCallRegistry, {:tool_call, tool_call_id}) do
       [{_pid, %{caller_pid: caller}}] ->
         encoded = encode_result_for_swarm(result)
         send(caller, {:tool_result, tool_call_id, encoded, is_error})
-        :ok
+        :notified
 
       [] ->
-        :ok
+        :no_executor
     end
   end
 

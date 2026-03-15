@@ -468,6 +468,9 @@
                     "failed"
                   ]
                 },
+                "timestamp": {
+                  "type": "string"
+                },
                 "parentAgentId": {
                   "type": "string"
                 },

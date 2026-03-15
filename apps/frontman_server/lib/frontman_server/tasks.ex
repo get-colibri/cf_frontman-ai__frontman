@@ -299,9 +299,12 @@ defmodule FrontmanServer.Tasks do
   Routes the result to the waiting executor so the agent can continue.
   Duplicate tool results for the same tool_call_id are prevented by a
   unique partial index on the interactions table.
+
+  Returns `{:ok, interaction, :notified}` when a live executor received the result,
+  `{:ok, interaction, :no_executor}` when no executor was waiting (e.g., server restart).
   """
   @spec add_tool_result(Scope.t(), String.t(), map(), term(), boolean()) ::
-          {:ok, Interaction.ToolResult.t()}
+          {:ok, Interaction.ToolResult.t(), :notified | :no_executor}
           | {:error, :not_found | Ecto.Changeset.t()}
   def add_tool_result(
         %Scope{} = scope,
@@ -313,8 +316,8 @@ defmodule FrontmanServer.Tasks do
     with {:ok, schema} <- get_task_by_id(scope, task_id),
          interaction = Interaction.ToolResult.new(tool_call_data, result, is_error),
          {:ok, interaction} <- append_interaction(schema, interaction) do
-      Execution.notify_tool_result(scope, tool_call_id, result, is_error)
-      {:ok, interaction}
+      executor_status = Execution.notify_tool_result(scope, tool_call_id, result, is_error)
+      {:ok, interaction, executor_status}
     end
   end
 
@@ -352,10 +355,12 @@ defmodule FrontmanServer.Tasks do
     TitleGenerator.pubsub_topic(user_id)
   end
 
-  # Starts an execution if none is already running for this task.
-  # Fetches the task and delegates to Execution.run.
+  @doc """
+  Starts an execution if none is already running for this task.
+  Fetches the task and delegates to Execution.run.
+  """
   @spec maybe_start_execution(Scope.t(), String.t(), list(), keyword()) :: :ok
-  defp maybe_start_execution(scope, task_id, tools, opts) do
+  def maybe_start_execution(scope, task_id, tools, opts) do
     if Execution.running?(scope, task_id) do
       :ok
     else

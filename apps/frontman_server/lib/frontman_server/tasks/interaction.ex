@@ -931,6 +931,27 @@ defmodule FrontmanServer.Tasks.Interaction do
   end
 
   @doc """
+  Returns ToolCall interactions that have no matching ToolResult.
+
+  Used to detect interrupted sessions: if a ToolCall exists without a
+  ToolResult, the tool was dispatched but never completed (e.g., server
+  restarted while an interactive tool was pending).
+  """
+  @spec unresolved_tool_calls(list(t())) :: list(ToolCall.t())
+  def unresolved_tool_calls(interactions) do
+    result_ids =
+      interactions
+      |> Enum.filter(&match?(%ToolResult{}, &1))
+      |> MapSet.new(& &1.tool_call_id)
+
+    interactions
+    |> Enum.filter(fn
+      %ToolCall{tool_call_id: id} -> not MapSet.member?(result_ids, id)
+      _ -> false
+    end)
+  end
+
+  @doc """
   Converts interactions to LLM message format.
 
   This is the boundary translation from Tasks domain (Interactions)
