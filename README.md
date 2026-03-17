@@ -16,7 +16,6 @@
 ---
 
 [Frontman](https://frontman.sh) is an open-source AI coding agent that lives in your browser. It hooks into your dev server as middleware and sees the live DOM, component tree, CSS styles, routes, and server logs. Click any element in your running app, describe what you want changed in plain English, and Frontman edits the actual source files with instant hot reload. It supports Next.js, Astro, and Vite (React, Vue, Svelte). Free and open-source — Apache 2.0 (client libraries) / AGPL-3.0 (server). Bring your own API keys (Claude, ChatGPT, or OpenRouter).
-
 <p align="center">
   <a href="https://www.youtube.com/watch?v=-4GD1GYwH8Y">
     <img src="./assets/demo.webp" alt="Frontman Demo" width="600" />
@@ -35,15 +34,15 @@
 
 Most AI coding tools work from source files and never see the running application. Frontman takes the opposite approach — it starts from the browser and works backward to the source.
 
-| | Frontman | Cursor | GitHub Copilot | v0 |
-|---|---|---|---|---|
-| **Context** | Live DOM, computed CSS, component tree, server logs | Source files in IDE | Source files in IDE | Sandboxed preview |
-| **Editing interface** | Browser overlay | IDE (VS Code fork) | IDE extension | Web app |
-| **What it edits** | Your existing codebase | Your existing codebase | Your existing codebase | Generates new code |
-| **Sees rendered output** | Yes (framework middleware) | No | No | Own sandbox only |
-| **Open source** | Yes (Apache 2.0 / AGPL-3.0) | No | No | No |
-| **Pricing** | Free (BYOK) | $20/mo Pro | $10/mo Pro | $20/mo Premium |
-| **Best for** | Visual frontend editing, designer/PM collaboration | Full-stack IDE replacement | Autocomplete, code review | Generating new UI from scratch |
+|                          | Frontman                                            | Cursor                     | GitHub Copilot            | v0                             |
+| ------------------------ | --------------------------------------------------- | -------------------------- | ------------------------- | ------------------------------ |
+| **Context**              | Live DOM, computed CSS, component tree, server logs | Source files in IDE        | Source files in IDE       | Sandboxed preview              |
+| **Editing interface**    | Browser overlay                                     | IDE (VS Code fork)         | IDE extension             | Web app                        |
+| **What it edits**        | Your existing codebase                              | Your existing codebase     | Your existing codebase    | Generates new code             |
+| **Sees rendered output** | Yes (framework middleware)                          | No                         | No                        | Own sandbox only               |
+| **Open source**          | Yes (Apache 2.0 / AGPL-3.0)                         | No                         | No                        | No                             |
+| **Pricing**              | Free (BYOK)                                         | $20/mo Pro                 | $10/mo Pro                | $20/mo Premium                 |
+| **Best for**             | Visual frontend editing, designer/PM collaboration  | Full-stack IDE replacement | Autocomplete, code review | Generating new UI from scratch |
 
 Frontman and these tools are complementary. Many developers use Cursor or Copilot for backend work and general refactoring, then switch to Frontman when they need to see what they're editing in the browser.
 
@@ -61,6 +60,7 @@ Frontman only runs in development mode. Production builds strip it out. Your dep
 
 ### Next.js
 
+
 ```bash
 npx @frontman-ai/nextjs install
 npm run dev
@@ -73,6 +73,7 @@ See the [Next.js integration guide](https://frontman.sh/integrations/nextjs/) fo
 
 ### Astro
 
+
 ```bash
 astro add @frontman-ai/astro
 astro dev
@@ -84,6 +85,7 @@ Listed on the [Astro integration registry](https://astro.build/integrations/?sea
 See the [Astro integration guide](https://frontman.sh/integrations/astro/) for details.
 
 ### Vite (React, Vue, Svelte)
+
 
 ```bash
 npx @frontman-ai/vite install
@@ -106,6 +108,7 @@ Frontman uses BYOK (bring your own key). Connect any LLM provider:
 You pay your LLM provider directly at their standard rates. There are no prompt limits, usage caps, or subscription fees from Frontman.
 
 ## Architecture
+
 
 ```
 ┌─────────────────────────────────────────────────┐
